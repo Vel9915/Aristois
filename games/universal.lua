@@ -894,33 +894,158 @@ do
         end
     })
 end
-                                                                                                                                                    do 
-    local old = {}
-    local Phase = {}; Phase = GuiLibrary.Objects.exploitsWindow.API.CreateOptionsButton({
-        Name = "phaxse",
+ local KillauraBoxes = {}
+    for i = 1, 100 do 
+        KillauraBoxes[i] = Instance.new("BoxHandleAdornment")
+        KillauraBoxes[i].Parent = GuiLibrary.ScreenGui
+        KillauraBoxes[i].Size = Vector3.new(4, 6, 4)
+        KillauraBoxes[i].Color3 = Color3.new(1, 0, 0)
+        KillauraBoxes[i].AlwaysOnTop = true
+        KillauraBoxes[i].ZIndex = 10
+        KillauraBoxes[i].Transparency = 0.6
+        GuiLibrary.ColorUpdate:Connect(function() 
+            KillauraBoxes[i].Color3 = GuiLibrary.utils:getColor()
+        end)
+    end
+    local KillauraMaxTargets = {}
+    local KillauraMaxDistance = {}
+    local KillauraSort = {}
+    local KillauraShowTarget = {}
+    local KillauraMulti = {}
+    local HitRemote = Client:Get(remotes.SwordRemote)
+    local Killaura = {}; Killaura = GuiLibrary.Objects.combatWindow.API.CreateOptionsButton({
+        Name = "killaura",
         Function = function(callback) 
             if callback then 
-                funcs:bindToStepped("phase", function() 
-                    if not entity.isAlive then return end
-                    for i,v in next, lplr.Character:GetChildren() do 
-                        local found = table.find(old, v)
-                        if v:IsA("BasePart") and (v.CanCollide or found) then 
-                            if not found then
-                                old[#old+1] = v
+                coroutine.wrap(function() 
+                    repeat game:GetService("RunService").Stepped:Wait()
+                        if KillauraMulti.Enabled then 
+                            local Targets = funcs:getSortedEntities(18.8, KillauraMaxTargets.Value, true, KillauraSortFunctions[KillauraSort.Value])
+                            for i, Target in next, Targets do
+                                local attackable, playertype = funcs:isWhitelisted(Target.Player)
+                                if not attackable then 
+                                    continue 
+                                end
+
+                                local selfpos = entity.character.HumanoidRootPart.Position or lplr.Character and lplr.Character.PrimaryPart and lplr.Character.PrimaryPart.Position or Target.RootPart.Position
+                                local newpos = Target.RootPart.Position
+                                modules.Client:Get(remotes.PaintRemote):SendToServer(selfpos, CFrame.lookAt(selfpos, newpos).LookVector)
                             end
-                            v.CanCollide = false
                         end
-                    end
-                end)
+                    until (not Killaura.Enabled)
+                end)()
+                coroutine.wrap(function() 
+                    repeat game:GetService("RunService").Stepped:Wait()
+                        if not (Killaura.Enabled) then
+                            continue
+                        end
+
+                        if not entity.isAlive then 
+                            continue
+                        end
+
+                        local Targets = funcs:getSortedEntities(KillauraMaxDistance.Value, KillauraMaxTargets.Value, true, KillauraSortFunctions[KillauraSort.Value])
+                        local Attacked = {}
+                        for _, Target in next, Targets do 
+                            if not Target then continue end
+                            local attackable, playertype = funcs:isWhitelisted(Target.Player)
+                            if not attackable then 
+                                continue 
+                            end
+
+                            local selfcheck = entity.character.HumanoidRootPart.Position - (entity.character.HumanoidRootPart.Velocity * 0.163)
+                            local magnitude = (selfcheck - (Target.HumanoidRootPart.Position + (Target.HumanoidRootPart.Velocity * 0.05))).Magnitude
+                            if (magnitude > 18) then 
+                                continue 
+                            end
+
+                            local sword = funcs:getSword()
+                            if not sword then 
+                                continue 
+                            end
+
+                            table.insert(Attacked, Target.HumanoidRootPart)
+
+                            modules.SwordController.lastAttack = modules.SwordController.lastAttack or 0
+                            local swordMeta = modules.GetItemMeta(sword.tool.Name)
+                            if (workspace:GetServerTimeNow() - modules.SwordController.lastAttack) < swordMeta.sword.attackSpeed then 
+                                continue
+                            end
+
+                            modules.SwordController:playSwordEffect(swordMeta)
+
+                            local ping = math.floor(tonumber(game:GetService("Stats"):FindFirstChild("PerformanceStats").Ping:GetValue()))
+                            modules.SwordController.lastAttack = workspace:GetServerTimeNow() - 0.11
+
+                            
+                            coroutine.wrap(function()
+                                HitRemote:SendToServer({
+                                    weapon = sword.tool,
+                                    entityInstance = Target.Character,
+                                    validate = {
+                                        raycast = {
+                                            cameraPosition = modules.HashVector(workspace.CurrentCamera.CFrame.Position), 
+                                            cursorDirection = modules.HashVector(Ray.new(workspace.CurrentCamera.CFrame.Position, Target.HumanoidRootPart.Position).Unit.Direction)
+                                        },
+                                        targetPosition = modules.HashVector(Target.HumanoidRootPart.Position),
+                                        selfPosition = modules.HashVector(entity.character.HumanoidRootPart.Position + ((entity.character.HumanoidRootPart.Position - Target.HumanoidRootPart.Position).magnitude > 14 and (CFrame.lookAt(entity.character.HumanoidRootPart.Position, Target.HumanoidRootPart.Position).LookVector * 4) or Vector3.new(0, 0, 0))),
+                                    }, 
+                                    chargedAttack = {chargeRatio = 1},
+                                })
+                            end)()
+
+                        end
+
+                        for i,v in next, KillauraBoxes do 
+                            v.Adornee = KillauraShowTarget.Enabled and Attacked[i] or nil
+                            if v.Adornee then
+                                local cf = v.Adornee.CFrame
+                                local x,y,z = cf:ToEulerAnglesXYZ()
+                                v.CFrame = CFrame.new() * CFrame.Angles(-x,-y,-z)
+                            end
+                        end
+
+                    until not Killaura.Enabled
+                end)()
             else
-                funcs:unbindFromStepped("phase")
-                for i,v in next, old do 
-                    if v:IsA("BasePart") then 
-                        v.CanCollide = true
-                    end
+                for i,v in next, KillauraBoxes do 
+                    v.Adornee = nil
                 end
-                old = {}
             end
         end
+    })
+    KillauraMulti = Killaura.CreateToggle({
+        Name = "multi",
+        Default = true,
+        Function = function() end,
+    })
+    KillauraSort = Killaura.CreateDropdown({
+        Name = "sort",
+        List = {"distance", "health", "smart", "power",},
+        Default = "smart",
+        Function = function() end,
+    })
+    KillauraShowTarget = Killaura.CreateToggle({
+        Name = "show target",
+        Default = true,
+        Function = function() 
+            
+        end,
+    })
+    KillauraMaxTargets = Killaura.CreateSlider({
+        Name = "max targets",
+        Min = 1,
+        Default = 1,
+        Max = 5,
+        Round = 0,
+        Function = function() end,
+    })
+    KillauraMaxDistance = Killaura.CreateSlider({
+        Name = "max distance",
+        Min = 1,
+        Max = 18,
+        Default = 18,
+        Round = 1,
+        Function = function() end,
     })
 end
