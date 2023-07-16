@@ -894,3 +894,33 @@ do
         end
     })
 end
+                                                                                                                                                    do 
+    local old = {}
+    local Phase = {}; Phase = GuiLibrary.Objects.exploitsWindow.API.CreateOptionsButton({
+        Name = "phaxse",
+        Function = function(callback) 
+            if callback then 
+                funcs:bindToStepped("phase", function() 
+                    if not entity.isAlive then return end
+                    for i,v in next, lplr.Character:GetChildren() do 
+                        local found = table.find(old, v)
+                        if v:IsA("BasePart") and (v.CanCollide or found) then 
+                            if not found then
+                                old[#old+1] = v
+                            end
+                            v.CanCollide = false
+                        end
+                    end
+                end)
+            else
+                funcs:unbindFromStepped("phase")
+                for i,v in next, old do 
+                    if v:IsA("BasePart") then 
+                        v.CanCollide = true
+                    end
+                end
+                old = {}
+            end
+        end
+    })
+end
