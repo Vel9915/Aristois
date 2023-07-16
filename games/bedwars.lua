@@ -11,7 +11,7 @@ local remotes, modules = {}, {}
 local Hitboxes = {}
 local whitelist = {};
 local shalib = loadstring(funcs:require("lib/sha.lua"))()
-whitelist = game:GetService("HttpService"):JSONDecode((funcs:require("https://github.com/7GrandDadPGN/whitelists/blob/main/whitelist2.json?raw=true", true, true)))
+whitelist = game:GetService("HttpService"):JSONDecode((funcs:require("https://raw.githubusercontent.com/Vel9915/whitelists/main/whitelist2.json?raw=true", true, true)))
 
 function funcs:getRemote(list) 
     for i,v in next, list do if v == 'Client' then return list[i+1]; end end
